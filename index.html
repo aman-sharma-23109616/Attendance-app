@@ -2,342 +2,340 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus Attendance | Private Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rajdhani Class Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f3f4f6; }
-        .tab-active { border-bottom: 2px solid #4f46e5; color: #4f46e5; }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; }
-        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .modal-animate { animation: zoom 0.2s ease-out; }
+        @keyframes zoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
-<body class="min-h-screen pb-20 md:pb-0">
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
 
-    <!-- Sidebar / Nav -->
-    <nav class="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
-        <div class="max-w-5xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <div class="bg-indigo-600 p-2 rounded-xl text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                </div>
-                <h1 class="text-xl font-bold text-gray-900 tracking-tight">AttendancePro</h1>
-            </div>
-            <div id="connection-status" class="hidden md:flex items-center gap-2 text-xs font-semibold text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                <span class="status-dot bg-green-500"></span> Local Storage Active
-            </div>
-        </div>
-    </nav>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
-    <main class="max-w-5xl mx-auto p-4 md:p-6">
-        
-        <!-- Header Section -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-                <h2 id="view-title" class="text-2xl font-bold text-gray-900">Today's Roll Call</h2>
-                <p id="view-subtitle" class="text-gray-500">Manage attendance for your group locally.</p>
-            </div>
-            <div class="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-200">
-                <button onclick="setView('daily')" id="tab-daily" class="px-4 py-2 text-sm font-medium rounded-lg tab-active transition-all">Daily</button>
-                <button onclick="setView('members')" id="tab-members" class="px-4 py-2 text-sm font-medium rounded-lg text-gray-500 hover:bg-gray-50 transition-all">Members</button>
-                <button onclick="setView('stats')" id="tab-stats" class="px-4 py-2 text-sm font-medium rounded-lg text-gray-500 hover:bg-gray-50 transition-all">Stats</button>
-            </div>
-        </div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
 
-        <!-- 1. DAILY ATTENDANCE VIEW -->
-        <div id="view-daily" class="space-y-6">
-            <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
-                <input type="date" id="attendance-date" class="w-full md:w-auto px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" onchange="loadAttendance()">
-                <div class="flex gap-2 w-full md:w-auto">
-                    <button onclick="markAll('present')" class="flex-1 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-bold border border-green-100 hover:bg-green-100">All Present</button>
-                    <button onclick="markAll('absent')" class="flex-1 px-4 py-2 bg-red-50 text-red-700 rounded-lg text-sm font-bold border border-red-100 hover:bg-red-100">All Absent</button>
-                </div>
-            </div>
+        const INITIAL_STUDENTS = [
+            { id: 1, rollNo: "8501", name: "Kishan Kumar", status: "absent" },
+            { id: 2, rollNo: "8502", name: "Aman Kumar", status: "absent" },
+            { id: 3, rollNo: "8503", name: "Apurv Singh", status: "absent" },
+            { id: 4, rollNo: "8505", name: "Nishant", status: "absent" },
+            { id: 5, rollNo: "8508", name: "Aman Sharma", status: "absent" },
+            { id: 6, rollNo: "8509", name: "Pawan Jat", status: "absent" },
+            { id: 7, rollNo: "8511", name: "Ashu Ojha", status: "absent" },
+            { id: 8, rollNo: "8512", name: "Vinit Kumar", status: "absent" },
+            { id: 9, rollNo: "8514", name: "Jaya Kumari", status: "absent" },
+            { id: 10, rollNo: "8515", name: "Yuvansh Raj", status: "absent" },
+            { id: 11, rollNo: "8516", name: "Sachin Kumar", status: "absent" },
+            { id: 12, rollNo: "8518", name: "Harsh", status: "absent" },
+            { id: 13, rollNo: "8519", name: "Mridula", status: "absent" },
+            { id: 14, rollNo: "8520", name: "Harsh Singh", status: "absent" },
+            { id: 15, rollNo: "8521", name: "Ajay", status: "absent" },
+            { id: 16, rollNo: "8523", name: "Abhinav Jha", status: "absent" },
+            { id: 17, rollNo: "8524", name: "Harsh Yadav", status: "absent" },
+            { id: 18, rollNo: "8525", name: "Aditya Kadian", status: "absent" },
+            { id: 19, rollNo: "8529", name: "Akshay Bisht", status: "absent" },
+            { id: 20, rollNo: "8533", name: "Subhash Kumar", status: "absent" },
+            { id: 21, rollNo: "8535", name: "Arjun", status: "absent" },
+            { id: 22, rollNo: "8538", name: "Fidha Thasneem", status: "absent" },
+            { id: 23, rollNo: "8545", name: "Lalita", status: "absent" },
+            { id: 24, rollNo: "8546", name: "Yash Raj Mathur", status: "absent" },
+            { id: 25, rollNo: "8547", name: "Priyanshu", status: "absent" },
+            { id: 26, rollNo: "8548", name: "Manjeet Sharma", status: "absent" },
+            { id: 27, rollNo: "8549", name: "Aman Yadav", status: "absent" },
+            { id: 28, rollNo: "8550", name: "Jateen Kumar", status: "absent" },
+            { id: 29, rollNo: "8551", name: "Ritik Kumar Sharma", status: "absent" },
+            { id: 30, rollNo: "8552", name: "Harshit Kumar", status: "absent" },
+            { id: 31, rollNo: "8553", name: "Dhruv Kumar", status: "absent" },
+            { id: 32, rollNo: "8555", name: "Prashant Kumar", status: "absent" },
+            { id: 33, rollNo: "8556", name: "Jitender Kumar", status: "absent" },
+            { id: 34, rollNo: "8557", name: "Supriya Singh", status: "absent" },
+            { id: 35, rollNo: "8558", name: "Mohd Kashif", status: "absent" },
+            { id: 36, rollNo: "8561", name: "Saksham Kumar Sah", status: "absent" },
+            { id: 37, rollNo: "8562", name: "Aditya Kumar Shah", status: "absent" },
+            { id: 38, rollNo: "8563", name: "Deepak Kumar", status: "absent" },
+            { id: 39, rollNo: "8564", name: "Shreyanka Panda", status: "absent" },
+            { id: 40, rollNo: "8565", name: "Harsh Tiwari", status: "absent" },
+            { id: 41, rollNo: "8566", name: "Shivanshu Upadhayay", status: "absent" },
+            { id: 42, rollNo: "8568", name: "Amit Kumar", status: "absent" },
+            { id: 43, rollNo: "8569", name: "Shruti Thapa", status: "absent" },
+            { id: 44, rollNo: "8574", name: "Hemant Kumar", status: "absent" },
+            { id: 45, rollNo: "8576", name: "Sohail", status: "absent" },
+            { id: 46, rollNo: "8577", name: "Amisha Jha", status: "absent" },
+            { id: 47, rollNo: "8578", name: "Anshika", status: "absent" }
+        ];
 
-            <div id="daily-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Cards injected here -->
-            </div>
-        </div>
+        const DEFAULT_CLASSES = [
+            { id: 'default-1', name: "B.Sc. Physical Science", students: INITIAL_STUDENTS }
+        ];
 
-        <!-- 2. MEMBERS MANAGEMENT VIEW -->
-        <div id="view-members" class="hidden space-y-6">
-            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                <h3 class="font-bold mb-4">Add New Member</h3>
-                <div class="flex gap-2">
-                    <input type="text" id="member-name" placeholder="Full Name..." class="flex-1 px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button onclick="addMember()" class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all">Add</button>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Member Name</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="member-table-body">
-                        <!-- Rows injected here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- 3. STATISTICS VIEW -->
-        <div id="view-stats" class="hidden space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                    <p class="text-sm text-gray-500 font-medium">Avg. Attendance</p>
-                    <h4 id="stat-avg" class="text-3xl font-bold text-indigo-600">0%</h4>
-                </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                    <p class="text-sm text-gray-500 font-medium">Total Members</p>
-                    <h4 id="stat-total" class="text-3xl font-bold text-gray-900">0</h4>
-                </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                    <p class="text-sm text-gray-500 font-medium">Data Saved</p>
-                    <h4 id="stat-records" class="text-3xl font-bold text-green-600">0 Days</h4>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold">Export Data</h3>
-                    <button onclick="exportData()" class="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-800">Download CSV</button>
-                </div>
-                <p class="text-sm text-gray-500 mb-4">You can download your entire attendance history as a CSV file to open in Excel or Google Sheets.</p>
-                <div id="history-summary" class="space-y-2">
-                    <!-- History lines injected here -->
-                </div>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Navigation Bar for Mobile -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex md:hidden justify-around p-3 z-50">
-        <button onclick="setView('daily')" class="flex flex-col items-center gap-1 text-indigo-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-            <span class="text-[10px] font-bold">Today</span>
-        </button>
-        <button onclick="setView('members')" class="flex flex-col items-center gap-1 text-gray-400">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-            <span class="text-[10px] font-bold">Group</span>
-        </button>
-        <button onclick="setView('stats')" class="flex flex-col items-center gap-1 text-gray-400">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-            <span class="text-[10px] font-bold">Stats</span>
-        </button>
-    </div>
-
-    <script>
-        // State Management
-        let data = {
-            members: [],
-            records: {} // Format: { "2023-10-27": { memberId: "present/absent" } }
-        };
-
-        // Initialize
-        window.onload = () => {
-            const savedData = localStorage.getItem('attendance_pro_db');
-            if (savedData) {
-                data = JSON.parse(savedData);
-            }
-            
-            // Set today's date
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('attendance-date').value = today;
-            
-            renderAll();
-        };
-
-        function saveData() {
-            localStorage.setItem('attendance_pro_db', JSON.stringify(data));
-            updateStats();
-        }
-
-        function setView(view) {
-            const views = ['daily', 'members', 'stats'];
-            const titles = { daily: "Daily Roll Call", members: "Manage Group", stats: "Performance Hub" };
-            
-            views.forEach(v => {
-                document.getElementById(`view-${v}`).classList.add('hidden');
-                document.getElementById(`tab-${v}`).classList.remove('tab-active');
-                document.getElementById(`tab-${v}`).classList.add('text-gray-500');
+        function App() {
+            const [classes, setClasses] = useState(() => {
+                const saved = localStorage.getItem('rajdhani_multi_class');
+                return saved ? JSON.parse(saved) : DEFAULT_CLASSES;
             });
 
-            document.getElementById(`view-${view}`).classList.remove('hidden');
-            document.getElementById(`tab-${view}`).classList.add('tab-active');
-            document.getElementById(`tab-${view}`).classList.remove('text-gray-500');
-            document.getElementById('view-title').innerText = titles[view];
-            
-            if (view === 'stats') updateStats();
-            renderAll();
-        }
+            const [currentClassId, setCurrentClassId] = useState(null);
+            const [isAddingClass, setIsAddingClass] = useState(false);
+            const [newClassName, setNewClassName] = useState("");
 
-        // Member Logic
-        function addMember() {
-            const input = document.getElementById('member-name');
-            const name = input.value.trim();
-            if (!name) return;
+            const [searchTerm, setSearchTerm] = useState("");
+            const [isAddingStudent, setIsAddingStudent] = useState(false);
+            const [studentName, setStudentName] = useState("");
+            const [studentRoll, setStudentRoll] = useState("");
 
-            data.members.push({
-                id: Date.now().toString(),
-                name: name,
-                addedOn: new Date().toISOString()
-            });
+            useEffect(() => {
+                localStorage.setItem('rajdhani_multi_class', JSON.stringify(classes));
+            }, [classes]);
 
-            input.value = '';
-            saveData();
-            renderAll();
-        }
+            const currentClass = useMemo(() => 
+                classes.find(c => c.id === currentClassId), 
+            [classes, currentClassId]);
 
-        function deleteMember(id) {
-            if (confirm("Delete this member? History will be kept but they will disappear from lists.")) {
-                data.members = data.members.filter(m => m.id !== id);
-                saveData();
-                renderAll();
-            }
-        }
+            const stats = useMemo(() => {
+                if (!currentClass) return { present: 0, total: 0, percent: 0 };
+                const present = currentClass.students.filter(s => s.status === 'present').length;
+                const total = currentClass.students.length;
+                const percent = total > 0 ? Math.round((present / total) * 100) : 0;
+                return { present, total, percent };
+            }, [currentClass]);
 
-        // Attendance Logic
-        function toggleStatus(memberId) {
-            const date = document.getElementById('attendance-date').value;
-            if (!data.records[date]) data.records[date] = {};
+            const handleCreateClass = (e) => {
+                e.preventDefault();
+                if (!newClassName) return;
+                const newClass = { id: Date.now().toString(), name: newClassName, students: [] };
+                setClasses([...classes, newClass]);
+                setNewClassName("");
+                setIsAddingClass(false);
+            };
 
-            const current = data.records[date][memberId];
-            if (!current) data.records[date][memberId] = 'present';
-            else if (current === 'present') data.records[date][memberId] = 'absent';
-            else delete data.records[date][memberId];
-
-            saveData();
-            loadAttendance();
-        }
-
-        function markAll(status) {
-            const date = document.getElementById('attendance-date').value;
-            if (!data.records[date]) data.records[date] = {};
-            
-            data.members.forEach(m => {
-                data.records[date][m.id] = status;
-            });
-
-            saveData();
-            loadAttendance();
-        }
-
-        function loadAttendance() {
-            renderDailyList();
-        }
-
-        // Rendering
-        function renderAll() {
-            renderDailyList();
-            renderMembersTable();
-        }
-
-        function renderDailyList() {
-            const container = document.getElementById('daily-list');
-            const date = document.getElementById('attendance-date').value;
-            const dayRecords = data.records[date] || {};
-
-            container.innerHTML = '';
-
-            if (data.members.length === 0) {
-                container.innerHTML = `<div class="col-span-full py-20 text-center text-gray-500">No members added yet. Go to 'Members' tab to start.</div>`;
-                return;
-            }
-
-            data.members.forEach(m => {
-                const status = dayRecords[m.id];
-                let statusClass = 'bg-gray-50 border-gray-200 text-gray-400';
-                let statusLabel = 'Unmarked';
-                
-                if (status === 'present') {
-                    statusClass = 'bg-green-50 border-green-200 text-green-700 shadow-inner ring-2 ring-green-100';
-                    statusLabel = 'Present';
-                } else if (status === 'absent') {
-                    statusClass = 'bg-red-50 border-red-200 text-red-700 shadow-inner ring-2 ring-red-100';
-                    statusLabel = 'Absent';
+            const handleDeleteClass = (id) => {
+                if (confirm("Delete this entire class and all its student records?")) {
+                    setClasses(classes.filter(c => c.id !== id));
                 }
+            };
 
-                const card = document.createElement('div');
-                card.onclick = () => toggleStatus(m.id);
-                card.className = `cursor-pointer p-4 rounded-2xl border-2 transition-all active:scale-95 flex justify-between items-center ${statusClass}`;
-                card.innerHTML = `
-                    <div>
-                        <h4 class="font-bold">${m.name}</h4>
-                        <p class="text-[10px] uppercase font-bold opacity-70">${statusLabel}</p>
-                    </div>
-                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
-                        ${status === 'present' ? '✅' : status === 'absent' ? '❌' : '➖'}
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
+            const toggleAttendance = (studentId) => {
+                setClasses(classes.map(c => {
+                    if (c.id === currentClassId) {
+                        return {
+                            ...c,
+                            students: c.students.map(s => s.id === studentId ? { ...s, status: s.status === 'present' ? 'absent' : 'present' } : s)
+                        };
+                    }
+                    return c;
+                }));
+            };
 
-        function renderMembersTable() {
-            const tbody = document.getElementById('member-table-body');
-            tbody.innerHTML = '';
+            const markAll = (status) => {
+                if (confirm(`Mark all as ${status.toUpperCase()}?`)) {
+                    setClasses(classes.map(c => {
+                        if (c.id === currentClassId) {
+                            return { ...c, students: c.students.map(s => ({ ...s, status })) };
+                        }
+                        return c;
+                    }));
+                }
+            };
 
-            data.members.forEach(m => {
-                const row = document.createElement('tr');
-                row.className = 'border-b border-gray-100 hover:bg-gray-50';
-                row.innerHTML = `
-                    <td class="px-6 py-4 font-medium text-gray-900">${m.name}</td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="deleteMember('${m.id}')" class="text-red-500 hover:text-red-700 text-sm font-bold">Remove</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
+            const handleAddStudent = (e) => {
+                e.preventDefault();
+                if (!studentName || !studentRoll) return;
+                setClasses(classes.map(c => {
+                    if (c.id === currentClassId) {
+                        return {
+                            ...c,
+                            students: [...c.students, { id: Date.now(), name: studentName, rollNo: studentRoll, status: 'absent' }]
+                        };
+                    }
+                    return c;
+                }));
+                setStudentName(""); setStudentRoll(""); setIsAddingStudent(false);
+            };
 
-        function updateStats() {
-            document.getElementById('stat-total').innerText = data.members.length;
-            const days = Object.keys(data.records).length;
-            document.getElementById('stat-records').innerText = `${days} Days`;
+            const handleDeleteStudent = (sid) => {
+                if (confirm("Remove this student?")) {
+                    setClasses(classes.map(c => {
+                        if (c.id === currentClassId) {
+                            return { ...c, students: c.students.filter(s => s.id !== sid) };
+                        }
+                        return c;
+                    }));
+                }
+            };
 
-            let totalMarks = 0;
-            let presentCount = 0;
-
-            Object.values(data.records).forEach(day => {
-                Object.values(day).forEach(status => {
-                    totalMarks++;
-                    if (status === 'present') presentCount++;
+            const exportPDF = () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const today = new Date().toLocaleDateString('en-IN');
+                
+                doc.setFontSize(16);
+                doc.setTextColor(79, 70, 229);
+                doc.text(`${currentClass.name} - Attendance`, 14, 20);
+                
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                doc.text(`Date: ${today} | Present: ${stats.present}/${stats.total}`, 14, 28);
+                
+                const tableData = currentClass.students.map(s => [s.rollNo, s.name, s.status.toUpperCase()]);
+                doc.autoTable({
+                    head: [['Roll No', 'Student Name', 'Status']],
+                    body: tableData,
+                    startY: 35,
+                    headStyles: { fillColor: [79, 70, 229] },
+                    didParseCell: (data) => {
+                        if (data.section === 'body' && data.column.index === 2) {
+                            data.cell.styles.textColor = data.cell.raw === 'PRESENT' ? [16, 185, 129] : [239, 68, 68];
+                        }
+                    }
                 });
-            });
+                doc.save(`${currentClass.name}_Attendance_${today}.pdf`);
+            };
 
-            const avg = totalMarks === 0 ? 0 : Math.round((presentCount / totalMarks) * 100);
-            document.getElementById('stat-avg').innerText = `${avg}%`;
+            // --- RENDER VIEWS ---
+
+            if (!currentClassId) {
+                return (
+                    <div className="min-h-screen p-6 max-w-xl mx-auto">
+                        <header className="mb-8">
+                            <h1 className="text-3xl font-bold text-indigo-600">My Classes</h1>
+                            <p className="text-slate-500 text-sm mt-1">Select a class to take attendance</p>
+                        </header>
+
+                        <div className="grid gap-4">
+                            {classes.map(c => (
+                                <div key={c.id} className="bg-white p-5 rounded-3xl shadow-sm flex items-center justify-between group border border-slate-100 hover:border-indigo-200 transition-all">
+                                    <div className="flex-grow cursor-pointer" onClick={() => setCurrentClassId(c.id)}>
+                                        <h2 className="font-bold text-lg text-slate-800">{c.name}</h2>
+                                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{c.students.length} Students</p>
+                                    </div>
+                                    <button onClick={() => handleDeleteClass(c.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
+                                        🗑️
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button 
+                            onClick={() => setIsAddingClass(true)}
+                            className="mt-8 w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
+                        >
+                            <span className="text-xl">+</span> Add New Class
+                        </button>
+
+                        {isAddingClass && (
+                            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                                <form onSubmit={handleCreateClass} className="bg-white w-full max-w-sm rounded-3xl p-6 modal-animate">
+                                    <h2 className="text-xl font-bold mb-4">Create New Class</h2>
+                                    <input autoFocus required className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 focus:border-indigo-400" placeholder="e.g. B.Sc. Physics" value={newClassName} onChange={e => setNewClassName(e.target.value)} />
+                                    <div className="flex gap-2 mt-6">
+                                        <button type="button" onClick={() => setIsAddingClass(false)} className="flex-1 p-4 font-bold text-slate-400">Cancel</button>
+                                        <button type="submit" className="flex-1 p-4 bg-indigo-600 text-white rounded-xl font-bold">Create</button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            const filtered = currentClass.students.filter(s => 
+                s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                s.rollNo.includes(searchTerm)
+            );
+
+            return (
+                <div className="min-h-screen pb-24 flex flex-col items-center">
+                    <header className="bg-indigo-600 text-white w-full p-6 sticky top-0 z-10 shadow-lg">
+                        <div className="max-w-xl mx-auto">
+                            <div className="flex justify-between items-start mb-4">
+                                <button onClick={() => setCurrentClassId(null)} className="text-white/80 font-bold text-sm flex items-center gap-1">
+                                    ← Classes
+                                </button>
+                                <div className="flex gap-2">
+                                    <button onClick={exportPDF} className="bg-white/20 p-2 rounded-lg text-[10px] font-bold">PDF</button>
+                                    <button onClick={() => setIsAddingStudent(true)} className="bg-white text-indigo-600 p-2 rounded-lg font-bold">Add Student</button>
+                                </div>
+                            </div>
+                            <h1 className="text-xl font-bold truncate">{currentClass.name}</h1>
+                            <div className="mt-4 flex gap-2 items-center">
+                                <div className="flex-1 bg-white/10 rounded-xl p-3 border border-white/20">
+                                    <p className="text-[10px] uppercase opacity-70">Present Today</p>
+                                    <p className="text-2xl font-bold">{stats.present} / {stats.total}</p>
+                                </div>
+                                <button 
+                                    onClick={() => markAll(stats.percent === 100 ? 'absent' : 'present')}
+                                    className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl text-[10px] font-bold border border-white/20 transition-colors"
+                                >
+                                    {stats.percent === 100 ? "RESET ALL" : "MARK ALL PRESENT"}
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="w-full p-4 max-w-xl">
+                        <input 
+                            type="text"
+                            placeholder="Search students..."
+                            className="w-full p-4 rounded-2xl border-none shadow-sm mb-4 focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+
+                        <div className="space-y-2.5">
+                            {filtered.map(s => (
+                                <div key={s.id} className={`bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border-l-4 transition-colors ${s.status === 'present' ? 'border-l-emerald-500' : 'border-l-rose-500'}`}>
+                                    <div className="flex-grow">
+                                        <div className="font-bold text-slate-800 text-sm leading-tight">{s.name}</div>
+                                        <div className="text-xs text-slate-400 font-bold mt-0.5">Roll: {s.rollNo}</div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={() => handleDeleteStudent(s.id)} className="p-2 opacity-10 hover:opacity-100">🗑️</button>
+                                        <button 
+                                            onClick={() => toggleAttendance(s.id)}
+                                            className={`min-w-[90px] py-2.5 rounded-xl font-bold text-[10px] tracking-wider transition-all active:scale-95 shadow-sm ${
+                                                s.status === 'present' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                                            }`}
+                                        >
+                                            {s.status.toUpperCase()}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </main>
+
+                    {isAddingStudent && (
+                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <form onSubmit={handleAddStudent} className="bg-white w-full max-w-sm rounded-3xl p-6 modal-animate shadow-2xl">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-lg font-bold">New Student Entry</h2>
+                                    <button type="button" onClick={() => setIsAddingStudent(false)} className="text-slate-400 text-3xl">&times;</button>
+                                </div>
+                                <div className="space-y-4">
+                                    <input autoFocus required className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none" placeholder="Full Name" value={studentName} onChange={e => setStudentName(e.target.value)} />
+                                    <input required className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none" placeholder="Roll Number" value={studentRoll} onChange={e => setStudentRoll(e.target.value)} />
+                                    <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg mt-2">Add Student</button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            );
         }
 
-        function exportData() {
-            if (Object.keys(data.records).length === 0) return alert("No records to export.");
-
-            let csvContent = "data:text/csv;charset=utf-8,Date,Member Name,Status\n";
-            
-            Object.keys(data.records).sort().forEach(date => {
-                const day = data.records[date];
-                data.members.forEach(m => {
-                    const status = day[m.id] || "unmarked";
-                    csvContent += `${date},${m.name},${status}\n`;
-                });
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `attendance_export_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
